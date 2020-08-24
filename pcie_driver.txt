@@ -24,19 +24,19 @@
 /*************************************************************
   General definitions
  *************************************************************/
-/* Error messages display */
+ /* Error messages display */
 #define MY_DRIVER_ERR printf
 
 /*************************************************************
   Global variables
  *************************************************************/
-/* User's input command */
+ /* User's input command */
 static CHAR gsInput[256];
 
 /* --------------------------------------------------
     PCI configuration registers information
    -------------------------------------------------- */
-/* Configuration registers information array */
+   /* Configuration registers information array */
 static const WDC_REG gMY_DRIVER_CfgRegs[] = {
     { WDC_AD_CFG_SPACE, PCI_VID, WDC_SIZE_16, WDC_READ_WRITE, "VID",
         "Vendor ID" },
@@ -146,8 +146,8 @@ static const WDC_REG gMY_DRIVER_ext_CfgRegs[] = {
 
 /* TODO: For read-only or write-only registers, change the direction field of
          the relevant registers in gMY_DRIVER_CfgRegs to WDC_READ or WDC_WRITE. */
-/* NOTE: You can define additional configuration registers in gMY_DRIVER_CfgRegs. */
-const WDC_REG *gpMY_DRIVER_CfgRegs = gMY_DRIVER_CfgRegs;
+         /* NOTE: You can define additional configuration registers in gMY_DRIVER_CfgRegs. */
+const WDC_REG* gpMY_DRIVER_CfgRegs = gMY_DRIVER_CfgRegs;
 
 
 // -----------------------------------------------
@@ -155,7 +155,7 @@ const WDC_REG *gpMY_DRIVER_CfgRegs = gMY_DRIVER_CfgRegs;
 // ----------------------------------------------- 
 // Run-time registers information array
 // const WDC_REG gMY_DRIVER_Regs[];
-const WDC_REG *gpMY_DRIVER_Regs = NULL;
+const WDC_REG* gpMY_DRIVER_Regs = NULL;
 
 /* TODO: You can remove the comment from the gMY_DRIVER_Regs array declaration and
          fill the array with run-time registers information for your device,
@@ -163,21 +163,21 @@ const WDC_REG *gpMY_DRIVER_Regs = NULL;
 #define MY_DRIVER_REGS_NUM 0
 
 
-/*************************************************************
-  Static functions prototypes
- *************************************************************/
-/* -----------------------------------------------
-    Main diagnostics menu
-   ----------------------------------------------- */
-/* Main menu */
-static void MenuMain(WDC_DEVICE_HANDLE *phDev);
+         /*************************************************************
+           Static functions prototypes
+          *************************************************************/
+          /* -----------------------------------------------
+              Main diagnostics menu
+             ----------------------------------------------- */
+             /* Main menu */
+static void MenuMain(WDC_DEVICE_HANDLE* phDev);
 
 /* -----------------------------------------------
     Device find, open and close
    ----------------------------------------------- */
 static WDC_DEVICE_HANDLE DeviceFindAndOpen(DWORD dwVendorId, DWORD dwDeviceId);
-static BOOL DeviceFind(DWORD dwVendorId, DWORD dwDeviceId, WD_PCI_SLOT *pSlot);
-static WDC_DEVICE_HANDLE DeviceOpen(const WD_PCI_SLOT *pSlot);
+static BOOL DeviceFind(DWORD dwVendorId, DWORD dwDeviceId, WD_PCI_SLOT* pSlot);
+static WDC_DEVICE_HANDLE DeviceOpen(const WD_PCI_SLOT* pSlot);
 static void DeviceClose(WDC_DEVICE_HANDLE hDev);
 
 /* -----------------------------------------------
@@ -199,15 +199,17 @@ static void MenuReadWriteRegs(WDC_DEVICE_HANDLE hDev);
     Interrupt handling
    ----------------------------------------------- */
 static void MenuInterrupts(WDC_DEVICE_HANDLE hDev);
-static void DiagIntHandler(WDC_DEVICE_HANDLE hDev, MY_DRIVER_INT_RESULT *pIntResult);
+static void DiagIntHandler(WDC_DEVICE_HANDLE hDev, MY_DRIVER_INT_RESULT* pIntResult);
 
 /* -----------------------------------------------
     DMA memory handling
    ----------------------------------------------- */
-/* Allocate/free DMA memory menu */
+   /* Allocate/free DMA memory menu */
 static void MenuDma(WDC_DEVICE_HANDLE hDev);
 /*    DMA trans     */
 static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev);
+BOOL DMARoutine(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize,
+    BOOL fPolling, BOOL fToDev);
 /* ----------------------------------------------------
     Plug-and-play and power management events handling
    ---------------------------------------------------- */
@@ -268,7 +270,7 @@ int main(void)
 /* -----------------------------------------------
     Main diagnostics menu
    ----------------------------------------------- */
-/* Main menu options */
+   /* Main menu options */
 enum {
     MENU_MAIN_SCAN_BUS = 1,
     MENU_MAIN_FIND_AND_OPEN,
@@ -285,7 +287,7 @@ enum {
 };
 
 /* Main diagnostics menu */
-static void MenuMain(WDC_DEVICE_HANDLE *phDev)
+static void MenuMain(WDC_DEVICE_HANDLE* phDev)
 {
     DWORD option;
 
@@ -321,19 +323,19 @@ static void MenuMain(WDC_DEVICE_HANDLE *phDev)
         }
         printf("%d. Exit\n", MENU_MAIN_EXIT);
 
-    #ifndef MY_DRIVER_REGS_NUM
+#ifndef MY_DRIVER_REGS_NUM
         if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option,
             *phDev ? MENU_MAIN_ALLOC_FREE_DMA : MENU_MAIN_IPC))
         {
             continue;
         }
-    #else /* ifdef MY_DRIVER_REGS_NUM */
+#else /* ifdef MY_DRIVER_REGS_NUM */
         if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option,
             *phDev ? MENU_MAIN_RW_REGS : MENU_MAIN_IPC))
         {
             continue;
         }
-    #endif /* ifdef MY_DRIVER_REGS_NUM */
+#endif /* ifdef MY_DRIVER_REGS_NUM */
 
         switch (option)
         {
@@ -390,7 +392,7 @@ static void MenuMain(WDC_DEVICE_HANDLE *phDev)
 /* -----------------------------------------------
     Device find, open and close
    ----------------------------------------------- */
-/* Find and open a PCI device */
+   /* Find and open a PCI device */
 static WDC_DEVICE_HANDLE DeviceFindAndOpen(DWORD dwVendorId, DWORD dwDeviceId)
 {
     WD_PCI_SLOT slot;
@@ -404,7 +406,7 @@ static WDC_DEVICE_HANDLE DeviceFindAndOpen(DWORD dwVendorId, DWORD dwDeviceId)
 }
 
 /* Find a PCI device */
-static BOOL DeviceFind(DWORD dwVendorId, DWORD dwDeviceId, WD_PCI_SLOT *pSlot)
+static BOOL DeviceFind(DWORD dwVendorId, DWORD dwDeviceId, WD_PCI_SLOT* pSlot)
 {
     DWORD dwStatus;
     DWORD i, dwNumDevices;
@@ -514,7 +516,7 @@ static DWORD CheckKPDriverVer(WDC_DEVICE_HANDLE hDev)
 }
 
 /* Open a handle to a PCI device */
-static WDC_DEVICE_HANDLE DeviceOpen(const WD_PCI_SLOT *pSlot)
+static WDC_DEVICE_HANDLE DeviceOpen(const WD_PCI_SLOT* pSlot)
 {
     WDC_DEVICE_HANDLE hDev;
     DWORD dwStatus;
@@ -574,7 +576,7 @@ static void DeviceClose(WDC_DEVICE_HANDLE hDev)
 /* -----------------------------------------------
     Read/write memory and I/O addresses
    ----------------------------------------------- */
-/* Read/write address menu options */
+   /* Read/write address menu options */
 enum {
     MENU_RW_ADDR_SET_ADDR_SPACE = 1,
     MENU_RW_ADDR_SET_MODE,
@@ -651,7 +653,7 @@ static void MenuReadWriteAddr(WDC_DEVICE_HANDLE hDev)
             WDC_DIAG_SetMode(&mode);
             break;
         case MENU_RW_ADDR_SET_TRANS_TYPE: /* Toggle active transfer type */
-             fBlock = !fBlock;
+            fBlock = !fBlock;
             break;
         case MENU_RW_ADDR_READ:  /* Read from a memory or I/O address */
         case MENU_RW_ADDR_WRITE: /* Write to a memory or I/O address */
@@ -719,7 +721,7 @@ static void SetAddrSpace(WDC_DEVICE_HANDLE hDev, PDWORD pdwAddrSpace)
 /* -----------------------------------------------
     Read/write the configuration space
    ----------------------------------------------- */
-/* Read/write the configuration space menu options */
+   /* Read/write the configuration space menu options */
 enum {
     MENU_RW_CFG_SPACE_READ_OFFSET = 1,
     MENU_RW_CFG_SPACE_WRITE_OFFSET,
@@ -822,20 +824,48 @@ static void MenuReadWriteCfgSpace(WDC_DEVICE_HANDLE hDev)
         }
     } while (MENU_RW_CFG_SPACE_EXIT != option);
 }
-    /*DMA Trans MENU*/
+/*DMA Trans MENU*/
 enum {
-    MENU_DMA_1=1,
+    MENU_DMA_1 = 1,
     MENU_DMA_2,
-    MENU_DMA_TEXIT=DIAG_EXIT_MENU,
+    MENU_DMA_TEXIT = DIAG_EXIT_MENU,
 };
 /*MAIN DMA Trans funcition*/
+static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
+{
+    DWORD option;
+    /*   varibles    */
+    int dwDMABufSize = 10000;/*申请DMA的内存大小*/
+    int fToDev = 1;/*fTodev=1 means DMA to host,fTodev=0 means host to DMA */
+    int fPolling = 1;/*中断是否允许的标志*/
+    /*fPooling 是轮询标志位？这个需要解决一下  */
+    /*如果fPolling 是0，是允许中断，如果fPolling是1，是禁止中断*/
 
-/*   varibles    */
-int dwDMABufSize = 10000;/*申请DMA的内存大小*/
-int fToDev = 1;/*fTodev=1 means DMA to host,fTodev=0 means host to DMA */
-int fPolling = 1;/*中断是否允许的标志*/
-/*fPooling 是轮询标志位？这个需要解决一下  */
-/*如果fPolling 是0，是允许中断，如果fPolling是1，是禁止中断*/
+    do {
+        printf("\n");
+        printf("DMA Trans\n");
+        printf("---------\n");
+        printf("%d,DMA Trans\n", MENU_DMA_1);
+        printf("%d.TEST_DESCIPTOR\n", MENU_DMA_2);
+        printf("%d. EXIT\n", MENU_DMA_TEXIT);
+        if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option, MENU_DMA_2))
+        {
+            continue;
+        }
+        switch (option)
+        {
+        case MENU_DMA_TEXIT:
+            break;
+        case MENU_DMA_1:
+            printf("DMA Trans start to prepare\n");
+            DMARoutine(hDev, dwDMABufSize, fPolling, fToDev);/*参数u32LocalAddr未使用*/
+            break;
+        case MENU_DMA_2:
+            //DescTest();
+            break;
+        }
+    } while (MENU_DMA_TEXIT != option);
+}
 
 /*functions  declare*/
 //BOOL MyDMAProgram((*ppDma)->Page, (*ppDma)->dwPages, fToDev, )
@@ -843,13 +873,10 @@ BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, PVOID pBuf,
     DWORD dwDMABufSize, BOOL fToDev, WD_DMA** ppDma);/* UINT32 u32LocalAddr,未使用*/
 BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma);
 BOOL MyDMAWaitForCompletion(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, int fPooling);
+BOOL MyDMAPageProgram(int dwPageNumber, struct DMADESC*, KPTR PhysicalAddr, DWORD dwBytes, DWORD dwOptions);
 void DMAClose(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, BOOL fPolling);
 
-
 /*目前u32LocalAddr还未处理解决*/
-
-
-
 BOOL DMARoutine(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize,
     BOOL fPolling, BOOL fToDev)/*UINT32 u32LocalAddr,未使用*/
 {
@@ -862,23 +889,25 @@ BOOL DMARoutine(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize,
     if (!pBuf)
         return FALSE;
 
+    memset(pBuf, 0, dwDMABufSize);
     /* Lock the DMA buffer and program the DMA controller */
-    if (!DMAOpen(hDev, pBuf,dwDMABufSize, fToDev, &pDma))/* u32LocalAddr, 未使用*/
-        goto Exit;
+    if (!DMAOpen(hDev, pBuf, dwDMABufSize, fToDev, &pDma))/* u32LocalAddr, 未使用*/
+        free(pBuf);
+    goto Exit;
 
     printf("success to Open DMA\n");
 
     /* Enable DMA interrupts (if not polling) */
     if (!fPolling)
     {
-       // if (!MyDMAInterruptEnable(hDev, MyDmaIntHandler, pDma))
-       //   goto Exit; /* Failed enabling DMA interrupts */
+        // if (!MyDMAInterruptEnable(hDev, MyDmaIntHandler, pDma))
+        //   goto Exit; /* Failed enabling DMA interrupts */
     }
 
     /* Flush the CPU caches (see documentation of WDC_DMASyncCpu()) */
     WDC_DMASyncCpu(pDma);
 
-    printf("success to flush the CPU caches\n");
+    //printf("success to flush the CPU caches\n");
 
     /* Start DMA - write to the device to initiate the DMA transfer */
     MyDMAStart(hDev, pDma);
@@ -899,12 +928,24 @@ Exit:
 }
 
 /* DMAOpen: Locks a Scatter/﻿Gather DMA buffer */
-
+    /*描述符的结构体定义*/
+struct DMADESC {
+    DWORD C2SStatus;/*前8位是状态标志位，中间留4位，后面20位是bytecount*/
+    KPTR UserStatus;/*用户状态寄存器64位*/
+    //DWORD HighUserStatus;/*用户状态寄存器高32位*/
+    DWORD DescCardAddr;/*需要传输数据时，DMA方面的地址，的低32位*/
+    WORD  DescByteCount;/*此描述符所包含的buffer的大小，但是是buffer的低16位*/
+    char  Rsvd_ByteCount;/*高4位是reserved，低4位是DescByteCount的高4位*/
+    char  C2SDescControlFlags;/*传输标志位，最低位是irqc,第二低位是irqer*/
+    KPTR DescSystemAddr;/*传输数据的PC端内存的物理地址的低32位*/
+                           /*传输的数据的PC端内存的物理地址的高32位*/
+    struct DMADESC* DescNextDescPtr;/*高27位，代表下一个描述符的指针*/
+};
 
 BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, PVOID pBuf,
     DWORD dwDMABufSize, BOOL fToDev, WD_DMA** ppDma)/* UINT32 u32LocalAddr,未使用*/
 {
-    DWORD dwStatus, i;
+    DWORD dwStatus, dwPageNumber;
     DWORD dwOptions = fToDev ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
 
     /* Lock a Scatter/﻿Gather DMA buffer */
@@ -917,15 +958,78 @@ BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, PVOID pBuf,
     }
     printf("lock buffer successful\n");
     /* Program the device's DMA registers for each physical page */
+    DWORD DescNumber = (*ppDma)->dwPages;/*描述符的个数*/
+    printf("需要建立%d个描述符\n", DescNumber);
+    /*由于定义数组时必须是常量，所以多定义几个描述符，多余的先放一边不管*/
+
+    /*想法：申请一快内存，然后找到对应低5位为0的地方，开始建立结构体*/
 
 
-    //MyDMAProgram((*ppDma)->Page, (*ppDma)->dwPages, fToDev,);/*u32LocalAddr未使用*/
 
+    //RESTART:
+    struct DMADESC Desc[20] = { 0,0,0,0,0,0,0,0 };/*描述符环的初始化*/
+    /*建立对应数量的描述符*/
+    //DWORD TEST[20] = { 0 };
+    //DWORD result[20] = { 0 };
+    //for (dwPageNumber = 0;dwPageNumber < DescNumber;dwPageNumber++)
+    //{
+    //  TEST[dwPageNumber] = (DWORD)&Desc[dwPageNumber];
+    //  result[dwPageNumber] = TEST[dwPageNumber] % 32;
+    //  if (result[dwPageNumber] != 0) {
+    //      printf("ReStart\n");
+    //      goto RESTART;
+    //  }
+    //}
+    /*下一个描述符的地址给前一个描述符的末尾*/
+    /*描述符的next指针*/
+    for (dwPageNumber = 0; dwPageNumber < DescNumber; dwPageNumber++)
+    {
+        if (DescNumber == 1) {/*只有一个描述符的话,直接在第一个描述符位置写0*/
+            Desc[dwPageNumber].DescNextDescPtr = &Desc[dwPageNumber];/*这里还不确定*/
+        }
+        else if (dwPageNumber == (DescNumber - 1)) {
+            Desc[DescNumber - 1].DescNextDescPtr = &Desc[0];/*最后一个描述符*/
+        }
+        else Desc[dwPageNumber].DescNextDescPtr = &Desc[dwPageNumber + 1];
 
-    //这部分是要自己完成的
+    }
+    struct DMADESC* pass;
+    for (dwPageNumber = 0; dwPageNumber < (*ppDma)->dwPages; dwPageNumber++)
+    {   /*在这个函数里，把描述符建立好*/
+        pass = &Desc[dwPageNumber];
+        MyDMAPageProgram(dwPageNumber, pass, (*ppDma)->Page[dwPageNumber].pPhysicalAddr,
+            (*ppDma)->Page[dwPageNumber].dwBytes, dwOptions);
+        //MyDMAProgram((*ppDma)->Page, (*ppDma)->dwPages, fToDev,);/*u32LocalAddr未使用*/
+    }
+    for (dwPageNumber = 0; dwPageNumber < DescNumber; dwPageNumber++) {
+        printf("第%d个描述符的构成\n此描述符的地址%p\n第一行%x\n用户状态寄存器%llx\nDMA地址%lx\n缓冲区大小%x%d\n"
+            "描述符驱动写入的状态位%d\nbuffer的物理地址%llx\n下一个描述符的地址%p\n",
+            dwPageNumber + 1, &Desc[dwPageNumber], Desc[dwPageNumber].C2SStatus, Desc[dwPageNumber].UserStatus, Desc[dwPageNumber].DescCardAddr,
+            Desc[dwPageNumber].Rsvd_ByteCount, Desc[dwPageNumber].DescByteCount, Desc[dwPageNumber].C2SDescControlFlags, Desc[dwPageNumber].DescSystemAddr, Desc[dwPageNumber].DescNextDescPtr);
+        printf("buffer的大小，高4位%x\n", Desc[dwPageNumber].Rsvd_ByteCount);
+        printf("buffer的大小，低16位%x\n\n\n", Desc[dwPageNumber].DescByteCount);
+    }
     return TRUE;
 }
-
+/*MyProgram 建立描述符*/
+BOOL MyDMAPageProgram(int dwPageNumber, struct DMADESC* pass, KPTR PhysicalAddr, DWORD dwBytes, DWORD dwOptions)
+{
+    if (DMA_TO_DEVICE != dwOptions)
+    {
+        printf("This is not the direction of from DMA to PC\n");
+        return 0;
+    }
+    pass->DescSystemAddr = PhysicalAddr;/*描述符环对应的buffer地址*/
+    pass->DescByteCount = (WORD)dwBytes;/*这里只有低16位的数量*/
+    //pass->Rsvd_ByteCount = (char)(dwBytes % 65536);/*这里高4位没有管，DMA地址无所谓*/
+    pass->C2SDescControlFlags = 3;/*这里把irqer和irqc置为1*/
+    //printf("第%d个buffer的大小为%d\n",dwPageNumber,dwBytes);
+    //printf("第%d个描述符的构成\n第一行%x\n用户状态寄存器%llx\nDMA地址%llx\n缓冲区大小%x%x\n"
+    //  "描述符驱动写入的状态位%x\nbuffer的物理地址%llx\n下一个描述符的地址%p\n\n\n",
+    //  dwPageNumber+1,pass->C2SStatus, pass->UserStatus, pass->DescCardAddr,
+    //  pass->Rsvd_ByteCount, pass->DescByteCount, pass->C2SDescControlFlags,pass->DescSystemAddr, pass->DescNextDescPtr);
+    return 1;
+}
 /*  myDMAStart  */
 BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma)
 {
@@ -934,7 +1038,7 @@ BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma)
 }
 
 /*  MyDMAWaitForCompletion  */
-BOOL MyDMAWaitForCompletion(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma,int fPooling)
+BOOL MyDMAWaitForCompletion(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, int fPooling)
 {
     printf("You haven't finish how to Wait For Completion\n");
     return 1;
@@ -944,45 +1048,18 @@ void DMAClose(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, BOOL fPolling)
 {
     /* Disable DMA interrupts (if not polling) */
     if (!fPolling)
-    //    MyDMAInterruptDisable(hDev);
+        //    MyDMAInterruptDisable(hDev);
 
-    /* Unlock and free the DMA buffer */
-    WDC_DMABufUnlock(pDma);
+        /* Unlock and free the DMA buffer */
+        WDC_DMABufUnlock(pDma);
 }
 
 
-static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
-{
-    DWORD option;
-    do {
-        printf("\n");
-        printf("DMA Trans\n");
-        printf("---------\n");
-        printf("%d,DMA Trans\n",MENU_DMA_1);
-        printf("%d. menu2\n", MENU_DMA_2);
-        printf("%d. EXIT\n", MENU_DMA_TEXIT);
-        if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option,MENU_DMA_2))
-        {
-         continue;
-        }
-        switch (option)
-        {
-        case MENU_DMA_TEXIT:
-            break;
-        case MENU_DMA_1:
-            printf("DMA Trans start to prepare\n");
-            DMARoutine(hDev,dwDMABufSize,fPolling,fToDev);/*参数u32LocalAddr未使用*/
-            break;
-        case MENU_DMA_2:
-            printf("NO code in the second choose\n");
-            break;
-        }
-    } while (MENU_DMA_TEXIT != option);
-}
+
 /* -----------------------------------------------
     Read/write the run-time registers
    ----------------------------------------------- */
-/* Read/write the run-time registers menu options */
+   /* Read/write the run-time registers menu options */
 enum {
     MENU_RW_REGS_READ_ALL = 1,
     MENU_RW_REGS_READ_REG,
@@ -1043,7 +1120,7 @@ static void MenuReadWriteRegs(WDC_DEVICE_HANDLE hDev)
 /* -----------------------------------------------
     Interrupt handling
    ----------------------------------------------- */
-/* Interrupts menu options */
+   /* Interrupts menu options */
 enum {
     MENU_INT_ENABLE_DISABLE = 1,
     MENU_INT_EXIT = DIAG_EXIT_MENU,
@@ -1068,12 +1145,13 @@ static void MenuInterrupts(WDC_DEVICE_HANDLE hDev)
         printf("----------\n");
         printf("Your hardware has level sensitive interrupts.\n");
         printf("Before enabling the interrupts, %s first modify the source "
-           "code of MY_DRIVER_IntEnable(), in the file my_driver_lib.c, to "
-           "\ncorrectly acknowledge%s interrupts",
-           fIsMsi ? "it's recommended that you" : "you must",
-           fIsMsi ? "level sensitive" : "");
-        printf("when they occur (as dictated by the hardware's specifications).\n");    }
-        
+            "code of MY_DRIVER_IntEnable(), in the file my_driver_lib.c, to "
+            "\ncorrectly acknowledge%s interrupts",
+            fIsMsi ? "it's recommended that you" : "you must",
+            fIsMsi ? "level sensitive" : "");
+        printf("when they occur (as dictated by the hardware's specifications).\n");
+    }
+
     do
     {
         fIntEnable = !MY_DRIVER_IntIsEnabled(hDev);
@@ -1129,7 +1207,7 @@ static void MenuInterrupts(WDC_DEVICE_HANDLE hDev)
 }
 
 /* Diagnostics interrupt handler routine */
-static void DiagIntHandler(WDC_DEVICE_HANDLE hDev, MY_DRIVER_INT_RESULT *pIntResult)
+static void DiagIntHandler(WDC_DEVICE_HANDLE hDev, MY_DRIVER_INT_RESULT* pIntResult)
 {
     /* TODO: You can modify this function in order to implement your own
              diagnostics interrupt handler routine */
@@ -1143,7 +1221,7 @@ static void DiagIntHandler(WDC_DEVICE_HANDLE hDev, MY_DRIVER_INT_RESULT *pIntRes
 /* -----------------------------------------------
     DMA memory handling
    ----------------------------------------------- */
-/* DMA menu options */
+   /* DMA menu options */
 enum {
     MENU_DMA_ALLOCATE_CONTIG = 1,
     MENU_DMA_ALLOCATE_SG,
@@ -1153,7 +1231,7 @@ enum {
     MENU_DMA_EXIT = DIAG_EXIT_MENU,
 };
 
-static void FreeDmaMem(PVOID *ppBuf, WD_DMA **ppDma)
+static void FreeDmaMem(PVOID* ppBuf, WD_DMA** ppDma)
 {
     DWORD dwStatus;
     BOOL fIsSG; /* Is Scatter Gather DMA */
@@ -1187,7 +1265,7 @@ static void MenuDma(WDC_DEVICE_HANDLE hDev)
     DWORD option, size, dwStatus, dwOptions = 0;
     UINT64 qwAddr;
     PVOID pBuf = NULL;
-    WD_DMA *pDma = NULL;
+    WD_DMA* pDma = NULL;
     DWORD dwDmaAddressWidth = 0;
     BOOL fIsSpecifyBitsSupported = TRUE;
 
@@ -1258,7 +1336,7 @@ static void MenuDma(WDC_DEVICE_HANDLE hDev)
                 if (DIAG_INPUT_SUCCESS != DIAG_InputDWORD(
                     (PVOID)&dwDmaAddressWidth, gsInput, FALSE, 0, 64))
                 {
-					continue;
+                    continue;
                 }
 
                 dwOptions = DMA_KBUF_ALLOC_SPECIFY_ADDRESS_WIDTH |
@@ -1356,7 +1434,7 @@ static void MenuDma(WDC_DEVICE_HANDLE hDev)
 /* ----------------------------------------------------
     Plug-and-play and power management events handling
    ---------------------------------------------------- */
-/* Events menu options */
+   /* Events menu options */
 enum {
     MENU_EVENTS_REGISTER_UNREGISTER = 1,
     MENU_EVENTS_EXIT = DIAG_EXIT_MENU,
