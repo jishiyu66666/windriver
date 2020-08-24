@@ -828,6 +828,9 @@ static void MenuReadWriteCfgSpace(WDC_DEVICE_HANDLE hDev)
 enum {
     MENU_DMA_1 = 1,
     MENU_DMA_2,
+    MENU_DMA_3,
+    MENU_DMA_4,
+    MENU_DMA_5,
     MENU_DMA_TEXIT = DIAG_EXIT_MENU,
 };
 /*MAIN DMA Trans funcition*/
@@ -840,18 +843,24 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
     int fPolling = 1;/*中断是否允许的标志*/
     /*fPooling 是轮询标志位？这个需要解决一下  */
     /*如果fPolling 是0，是允许中断，如果fPolling是1，是禁止中断*/
-
+    WORD Flag = 0;
     do {
         printf("\n");
         printf("DMA Trans\n");
         printf("---------\n");
-        printf("%d,DMA Trans\n", MENU_DMA_1);
-        printf("%d.TEST_DESCIPTOR\n", MENU_DMA_2);
+        printf("%d. DMA Trans\n", MENU_DMA_1);
+        printf("%d. TEST_DESCIPTOR\n", MENU_DMA_2);
+        printf("%d. TEST_READ_WRITE_REGISTER\n", MENU_DMA_3);
+        printf("%d. DMA Engine reset\n", MENU_DMA_4);
+        printf("%d. DMA Reset Recover\n",MENU_DMA_5);
         printf("%d. EXIT\n", MENU_DMA_TEXIT);
-        if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option, MENU_DMA_2))
+        if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option, MENU_DMA_5))
         {
             continue;
         }
+        DWORD dwAddrSpace = 0;
+        KPTR dwOffset = 0x9200;
+        UINT u32Data = 1;
         switch (option)
         {
         case MENU_DMA_TEXIT:
@@ -862,8 +871,26 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
             break;
         case MENU_DMA_2:
             //DescTest();
+        case MENU_DMA_3:
+            //DWORD dwAddrSpace=0;
+            //KPTR dwOffset=9100;
+            //DWORD u32Data=1;
+            WDC_WriteAddr16(hDev, 0, 0x9200, 1);//0的位置是第几个bar基址
             break;
+        case MENU_DMA_4:
+            WDC_WriteAddr16(hDev, 0, 0x4, 0x8000);/*reset DMA*/
+            //WDC_ReadAddr16(hDev, 0, 0x0004, &Flag);/*read the reset*/
+            //if (Flag != 0x8000) {
+            //  printf("Fail to reset DMA\n");
+            //  break;
+            //}
+            //else printf("Succseful to reset DMA\n");
+            break;
+        case MENU_DMA_5:
+            //WDC_WriteAddr16(hDev, 0, 0x0004, 0x0000);/*恢复reset*/
+            WDC_WriteAddr16(hDev, 0, 0x0004, 0x13f);/*使能DMA引擎，并允许中断*/
         }
+
     } while (MENU_DMA_TEXIT != option);
 }
 
@@ -1009,6 +1036,13 @@ BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, PVOID pBuf,
         printf("buffer的大小，高4位%x\n", Desc[dwPageNumber].Rsvd_ByteCount);
         printf("buffer的大小，低16位%x\n\n\n", Desc[dwPageNumber].DescByteCount);
     }
+    /*reset DMA engine*/
+    //WDC_WriteAddr32(hDev, 0, 0x9108, 0);/*loop back checker app0关*/
+    //WDC_WriteAddr32(hDev, 0, 0x9208, 0);/*loop back checker app1关*/
+    //WDC_WriteAddr32(hDev, 0, 0x9100, 0);/*此处是app0的generator位*/
+    //WDC_WriteAddr32(hDev, 0, 0x9200, 0);/*此处是app1的generator位*/
+
+
     return TRUE;
 }
 /*MyProgram 建立描述符*/
