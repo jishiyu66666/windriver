@@ -845,9 +845,9 @@ DWORD DescPhysicalAddr[DESC_NUMBER] = { 0 };
 WD_DMA* PhyDMA[DESC_NUMBER] = { 0 };
 /*functions  declare*/
 BOOL DMARoutine(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize,
-    BOOL fPolling, BOOL fToDev, DWORD* DescNum);
-BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize, BOOL fToDev, WD_DMA** ppDma, DWORD* descnum);/* UINT32 u32LocalAddr,未使用*/
-BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev, DWORD* descNum);
+    BOOL fPolling, BOOL fToDev);
+BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize, BOOL fToDev, WD_DMA** ppDma);/* UINT32 u32LocalAddr,未使用*/
+BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev);
 BOOL MyDMAWaitForCompletion(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, int fPooling);
 BOOL MyDMAPageProgram(WDC_DEVICE_HANDLE hDev, int dwPageNumber, char* PASS, KPTR PhysicalAddr, DWORD dwBytes, DWORD dwOptions);
 void DMAClose(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, BOOL fPolling);
@@ -856,8 +856,7 @@ void DMA_BufferRead();
 void DMA_Descriptor_Show(DWORD DESC);
 void DMA_Free_Buffer_Desc();
 void DMA_Data_Buffer_Clear();
-void DMA_Register_Read(WDC_DEVICE_HANDLE hDev);
-void DMA_Register_Write(WDC_DEVICE_HANDLE hDev);
+void DMA_Desc_Test(hDev);
 /*MAIN DMA Trans funcition*/
 
 /*varibles*/
@@ -866,13 +865,12 @@ int dwDMABufSize = 30000;/*申请内存的大小*/
 int fPolling = 1;/*中断是否允许的标志*/  /*fPooling 是轮询标志位？这个需要解决一下  */
     /*如果fPolling 是0，是允许中断，如果fPolling是1，是禁止中断*/
 WD_DMA* pDma = NULL;
+DWORD DESC = 0;/*记录描述符的个数*/
+DWORD* DescNum = &DESC;/*描述符个数的地址，用于函数调用*/
 static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
 {
     DWORD option;
     /*varibles*/
-    DWORD* DescNum = NULL;
-    DWORD DESC = 0;
-    DescNum = &DESC;
     WORD Flag = 0;
     do {
         printf("\n");
@@ -889,8 +887,7 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
         printf("%d. App0 Unable to generate\n", MENU_DMA_9);
         printf("%d. free data buffer\n", MENU_DMA_10);
         printf("%d. END_DMA_Trans\n", MENU_DMA_11);
-        printf("%d. Read Register\n", MENU_DMA_12);
-        printf("%d. Write Register\n", MENU_DMA_13);
+        printf("%d. Self_Test\n", MENU_DMA_12);
         printf("%d. EXIT\n", MENU_DMA_TEXIT);
         if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option, MENU_DMA_13));
         switch (option)
@@ -903,13 +900,13 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
             //printf("Sucessful to Reset DMA\n");
             break;
         case MENU_DMA_2:
-            DMARoutine(hDev, dwDMABufSize, fPolling, fToDev, DescNum);/*参数u32LocalAddr未使用*/
+            DMARoutine(hDev, dwDMABufSize, fPolling, fToDev);/*参数u32LocalAddr未使用*/
             break;
         case MENU_DMA_3:
             DMA_Data_Buffer_Clear();
             break;
         case MENU_DMA_4:
-            MyDMAStart(hDev, DescNum);/*使能DMA引擎，并允许中断*/
+            MyDMAStart(hDev);/*使能DMA引擎，并允许中断*/
             break;
         case MENU_DMA_5:
             DMA_BufferRead();
@@ -932,25 +929,42 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
         case MENU_DMA_11:
             WDC_DMASyncIo(pDma);
             //free(pDma);
-            pDma = NULL;/*这里可能存在问题，内存泄漏*/
+            //pDma = NULL;/*这里可能存在问题，内存泄漏*/
             break;
         case MENU_DMA_12:
-            DMA_Register_Read(hDev);
-            break;
-        case MENU_DMA_13:
-            DMA_Register_Write(hDev);
+            DMA_Desc_Test(hDev);
             break;
         }
     } while (MENU_DMA_TEXIT != option);
 }
 /*目前u32LocalAddr还未管是什么参数,可能出现在DMARoutine函数里面*/
+void DMA_Desc_Test(WDC_DEVICE_HANDLE hDev) {
+    DWORD NEXT_Desc_Ptr = 0;
+    DWORD SW_Desc_Ptr = 0;
+RECREATE:
+    WDC_WriteAddr16(hDev, 0, 0x2004, 0x8000);/*重置DMA引擎*/
+    DMARoutine(hDev, dwDMABufSize, fPolling, fToDev);
+    SW_Desc_Ptr = DescPhysicalAddr[*DescNum - 1];
+    MyDMAStart(hDev);
+    do {
+        WDC_ReadAddr32(hDev, 0, 0x2008, &NEXT_Desc_Ptr);
+    } while ((NEXT_Desc_Ptr != SW_Desc_Ptr) && (NEXT_Desc_Ptr != 0));
+
+    if (NEXT_Desc_Ptr = 0) {
+        goto RECREATE;
+    }
+    if (NEXT_Desc_Ptr == SW_Desc_Ptr) {
+        printf("sucessful to create descriptor\n");
+    }
+}
+
 BOOL DMARoutine(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize,
-    BOOL fPolling, BOOL fToDev, DWORD* DescNum)
+    BOOL fPolling, BOOL fToDev)
 {
     BOOL fRet = FALSE;
     /* Allocate a user-mode buffer for Scatter/Gather DMA */
     /* Lock the DMA buffer */
-    if (!DMAOpen(hDev, dwDMABufSize, fToDev, &pDma, DescNum))
+    if (!DMAOpen(hDev, dwDMABufSize, fToDev, &pDma))
     {
         printf("Fail to Open DMA\n");
         goto Exit;
@@ -984,7 +998,7 @@ Exit:
     return FALSE;
 }
 
-BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize, BOOL fToDev, WD_DMA** ppDma, DWORD* descnum)/* UINT32 u32LocalAddr,未使用*/
+BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize, BOOL fToDev, WD_DMA** ppDma)/* UINT32 u32LocalAddr,未使用*/
 {
     DWORD dwStatus, dwPageNumber;
     DWORD dwOptions = fToDev ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
@@ -1014,7 +1028,7 @@ Remalloc:
     }
     /* Program the device's DMA registers for each physical page */
     DWORD DescNumber = (*ppDma)->dwPages;/*描述符的个数*/
-    *descnum = DescNumber;
+    *DescNum = DescNumber;
     printf("建立%d个描述符\n", DescNumber);
     /*由于定义数组时必须是常量，所以多定义几个描述符，多余的先放一边不管*/
     /*想法：申请一快内存，然后找到对应低5位为0的地方，开始建立描述符*/
@@ -1198,14 +1212,14 @@ void DMA_Descriptor_Show(DWORD DESC)
     }
 }
 /*  myDMAStart  */
-BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev, DWORD* descNum)
+BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev)
 {
     WDC_WriteAddr16(hDev, 0, 0x2004, 0x8000);/*先初始化DMA引擎，再写描述符*/
     /*先将描述符环写入对应寄存器*/
     /*其中REG_NEXT_DESC_Ptr[31:5]写入第一个描述符的地址，给硬件的描述符,寄存器在0x8-0xB*/
     WDC_WriteAddr32(hDev, 0, 0x2008, DescPhysicalAddr[0]);
     /*其中REG_SW_DESC_Ptr[31:5]写入最后一个描述符的地址，要保证至少有一个描述符在软件手中，寄存器在0xC-0xF*/
-    WDC_WriteAddr32(hDev, 0, 0x200c, DescPhysicalAddr[*descNum - 1]);
+    WDC_WriteAddr32(hDev, 0, 0x200c, DescPhysicalAddr[*DescNum - 1]);
     //printf("the value of 0x8 should be %x\n", DescPhysicalAddr[0]);
     //printf("the value of 0xc should be %x\n", DescPhysicalAddr[*descNum-1]);
     WDC_WriteAddr16(hDev, 0, 0x2004, 0x0101);
