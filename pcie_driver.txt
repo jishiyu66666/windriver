@@ -883,8 +883,8 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
         printf("%d. App0 Unable to generate\n", MENU_DMA_8);
         printf("%d. App1 Enable to generate\n", MENU_DMA_9);
         printf("%d. App1 Unable to generate\n", MENU_DMA_10);
-        printf("%d. free data buffer\n",MENU_DMA_11)
-        printf("%d. EXIT\n", MENU_DMA_TEXIT);
+        printf("%d. free data buffer\n", MENU_DMA_11);
+            printf("%d. EXIT\n", MENU_DMA_TEXIT);
         if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option, MENU_DMA_11));
         switch (option)
         {
@@ -935,11 +935,6 @@ BOOL DMARoutine(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize,
     WD_DMA* pDma = NULL;
     BOOL fRet = FALSE;
     /* Allocate a user-mode buffer for Scatter/Gather DMA */
-Remalloc:
-    pBuf = malloc(dwDMABufSize);
-    if (!pBuf)
-        return FALSE;
-    memset(pBuf, 0, dwDMABufSize);
     /* Lock the DMA buffer */
     if (!DMAOpen(hDev, pBuf, dwDMABufSize, fToDev, &pDma, DescNum))
     {
@@ -980,7 +975,11 @@ BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, PVOID pBuf,
 {
     DWORD dwStatus, dwPageNumber;
     DWORD dwOptions = fToDev ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
-
+Remalloc:
+    pBuf = malloc(dwDMABufSize);
+    if (!pBuf)
+        return FALSE;
+    memset(pBuf, 0, dwDMABufSize);
     /* Lock a Scatter/﻿Gather DMA buffer */
     dwStatus = WDC_DMASGBufLock(hDev, pBuf, dwOptions, dwDMABufSize, ppDma);
     if (WD_STATUS_SUCCESS != dwStatus)
@@ -989,14 +988,14 @@ BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, PVOID pBuf,
             dwStatus, Stat2Str(dwStatus));
         return FALSE;
     }
-    for(dwPageNumber=0;dwPageNumber<(*ppDma)->dwPages;dwPageNumber++)/*检查缓冲区的大小是否超过4096，因为目前发现超过4096，此块内存会出现数据丢失的情况*/
+    for (dwPageNumber = 0; dwPageNumber < (*ppDma)->dwPages; dwPageNumber++)/*检查缓冲区的大小是否超过4096，因为目前发现超过4096，此块内存会出现数据丢失的情况*/
     {
-        if( ( (*ppDma)->Page[dwPageNumber].dwBytes ) >4096)
-            {
-                WDC_DMABufUnlock(pDma);
-                free(pBuf);
+        if (((*ppDma)->Page[dwPageNumber].dwBytes) > 4096)
+        {
+            WDC_DMABufUnlock(*ppDma);
+            free(pBuf);
             goto  Remalloc;
-            }
+        }
     }
     /* Program the device's DMA registers for each physical page */
     DWORD DescNumber = (*ppDma)->dwPages;/*描述符的个数*/
@@ -1135,10 +1134,10 @@ BOOL MyDMAPageProgram(WDC_DEVICE_HANDLE hDev, int dwPageNumber, char* PASS, KPTR
     DESC_DescNextDescPtr = NULL;
     return 1;
 }
-void DMA_Descriptor_Show(DWORD DESC) 
+void DMA_Descriptor_Show(DWORD DESC)
 {
-    int dcount = 0;
-    for (dcount = 0;dcount < DESC;dcount++) 
+    DWORD dcount = 0;
+    for (dcount = 0; dcount < DESC; dcount++)
     {
         DESC_C2SSatus = (DWORD*)((char*)Desc[dcount]);
         DESC_UserStatus = (KPTR*)((char*)Desc[dcount] + 4);
@@ -1261,7 +1260,7 @@ void DMAClose(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, BOOL fPolling)
         //    MyDMAInterruptDisable(hDev);
 
         /* Unlock and free the DMA buffer */
-        WDC_DMABufUnlock(pDma);
+    WDC_DMABufUnlock(pDma);
 }
 
 
