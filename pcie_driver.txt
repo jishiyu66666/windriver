@@ -835,6 +835,8 @@ enum {
     MENU_DMA_9,
     MENU_DMA_10,
     MENU_DMA_11,
+    MENU_DMA_12,
+    MENU_DMA_13,
     MENU_DMA_TEXIT = DIAG_EXIT_MENU,
 };
 PVOID pBuf;
@@ -844,7 +846,7 @@ DWORD DescPhysicalAddr[DESC_NUMBER] = { 0 };
 BOOL DMARoutine(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize,
     BOOL fPolling, BOOL fToDev, DWORD* DescNum);
 BOOL DMAOpen(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize, BOOL fToDev, WD_DMA** ppDma, DWORD* descnum);/* UINT32 u32LocalAddr,未使用*/
-BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev,DWORD* descNum);
+BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev, DWORD* descNum);
 BOOL MyDMAWaitForCompletion(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, int fPooling);
 BOOL MyDMAPageProgram(WDC_DEVICE_HANDLE hDev, int dwPageNumber, char* PASS, KPTR PhysicalAddr, DWORD dwBytes, DWORD dwOptions);
 void DMAClose(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, BOOL fPolling);
@@ -853,11 +855,13 @@ void DMA_BufferRead();
 void DMA_Descriptor_Show(DWORD DESC);
 void DMA_Free_Buffer_Desc();
 void DMA_Data_Buffer_Clear();
+void DMA_Register_Read(WDC_DEVICE_HANDLE hDev);
+void DMA_Register_Write(WDC_DEVICE_HANDLE hDev);
 /*MAIN DMA Trans funcition*/
 
 /*varibles*/
 int fToDev = 0;/*数据传输的方向 fTodev=1 means direction，zero means from device to PC memory */
-int dwDMABufSize = 20000;/*申请内存的大小*/
+int dwDMABufSize = 30000;/*申请内存的大小*/
 int fPolling = 1;/*中断是否允许的标志*/  /*fPooling 是轮询标志位？这个需要解决一下  */
     /*如果fPolling 是0，是允许中断，如果fPolling是1，是禁止中断*/
 WD_DMA* pDma = NULL;
@@ -875,7 +879,7 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
         printf("---------\n");
         printf("%d. DMA Reset\n", MENU_DMA_1);
         printf("%d. Descriptor Create\n", MENU_DMA_2);
-        printf("%d. Clear buffer\n",MENU_DMA_3);
+        printf("%d. Clear buffer\n", MENU_DMA_3);
         printf("%d. Write_Descriptor & DMA Start\n", MENU_DMA_4);
         printf("%d. Read Data Buffer\n", MENU_DMA_5);
         printf("%d. Descriptor Status\n", MENU_DMA_6);
@@ -883,9 +887,11 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
         printf("%d. App0 Enable to generate\n", MENU_DMA_8);
         printf("%d. App0 Unable to generate\n", MENU_DMA_9);
         printf("%d. free data buffer\n", MENU_DMA_10);
-        printf("%d. END_DMA_Trans\n",MENU_DMA_11);
+        printf("%d. END_DMA_Trans\n", MENU_DMA_11);
+        printf("%d. Read Register\n",MENU_DMA_12);
+        printf("%d. Write Register\n",MENU_DMA_13);
         printf("%d. EXIT\n", MENU_DMA_TEXIT);
-        if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option, MENU_DMA_11));
+        if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option, MENU_DMA_13));
         switch (option)
         {
         case MENU_DMA_TEXIT:
@@ -902,7 +908,7 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
             DMA_Data_Buffer_Clear();
             break;
         case MENU_DMA_4:
-            MyDMAStart(hDev,DescNum);/*使能DMA引擎，并允许中断*/
+            MyDMAStart(hDev, DescNum);/*使能DMA引擎，并允许中断*/
             break;
         case MENU_DMA_5:
             DMA_BufferRead();
@@ -924,8 +930,14 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
             break;
         case MENU_DMA_11:
             WDC_DMASyncIo(pDma);
-            free(pDma);
-            pDma=NULL;/*这里可能存在问题，内存泄漏*/
+            //free(pDma);
+            pDma = NULL;/*这里可能存在问题，内存泄漏*/
+            break;
+        case MENU_DMA_12:
+            DMA_Register_Read(hDev);
+            break;
+        case MENU_DMA_13:
+            DMA_Register_Write(hDev);
             break;
         }
     } while (MENU_DMA_TEXIT != option);
@@ -1007,10 +1019,10 @@ Remalloc:
     for (DescCount = 0; DescCount < DescNumber; DescCount++)
     {
     Remalloc_desc:
-        Desc[DescCount] = malloc(65);
-        memset(Desc[DescCount], 0, 65);
+        Desc[DescCount] = malloc(64);
+        memset(Desc[DescCount], 0, 64);
         AddrDesc = Desc[DescCount];
-        offset = (unsigned int)AddrDesc % 32;
+        offset = (DWORD)AddrDesc % 32;
         if (offset == 0) {
             Desc[DescCount] = AddrDesc;
         }
@@ -1181,9 +1193,9 @@ void DMA_Descriptor_Show(DWORD DESC)
     }
 }
 /*  myDMAStart  */
-BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev,DWORD* descNum)
-{    
-    WDC_WriteAddr16(hDev,0,0x2004,0x8000);/*先初始化DMA引擎，再写描述符*/
+BOOL MyDMAStart(WDC_DEVICE_HANDLE hDev, DWORD* descNum)
+{
+    WDC_WriteAddr16(hDev, 0, 0x2004, 0x8000);/*先初始化DMA引擎，再写描述符*/
     /*先将描述符环写入对应寄存器*/
     /*其中REG_NEXT_DESC_Ptr[31:5]写入第一个描述符的地址，给硬件的描述符,寄存器在0x8-0xB*/
     WDC_WriteAddr32(hDev, 0, 0x2008, DescPhysicalAddr[0]);
@@ -1257,14 +1269,14 @@ void DMA_BufferRead()
 
 void DMA_Data_Buffer_Clear(void)
 {
-    int buffercount=0;
-    unsigned int* Bufferread=pBuf;
-    for(buffercount=0;buffercount<(dwDMABufSize)/4;buffercount++)
+    int buffercount = 0;
+    unsigned int* Bufferread = pBuf;
+    for (buffercount = 0;buffercount < (dwDMABufSize) / 4;buffercount++)
     {
-        *Bufferread=0;
-        Bufferread=Bufferread+1;
+        *Bufferread = 0;
+        Bufferread = Bufferread + 1;
     }
-    Bufferread=NULL;
+    Bufferread = NULL;
 }
 /*  MyDMAWaitForCompletion  */
 BOOL MyDMAWaitForCompletion(WDC_DEVICE_HANDLE hDev, WD_DMA* pDma, int fPooling)
@@ -1295,8 +1307,26 @@ void DMA_Free_Buffer_Desc(void)
         DescPhysicalAddr[ccount] = 0;
     }
 }
-
-
+void DMA_Register_Read(WDC_DEVICE_HANDLE hDev)
+{
+    DWORD address=0;
+    DWORD register_value=0;
+    printf("input the read address\t");
+    scanf("%x",&address);
+    WDC_ReadAddr32(hDev, 0, address, &register_value);
+    printf("The offset %x value is %x\n",address,register_value);
+}
+void DMA_Register_Write(WDC_DEVICE_HANDLE hDev)
+{
+    DWORD address=0;
+    DWORD register_value=0;
+    printf("input the write address\t");
+    scanf("%x",&address);
+    printf("input the write value\t");
+    scanf("%x",&register_value);
+    WDC_WriteAddr32(hDev,0,address,register_value);
+    printf("Write %x to %x\n",register_value,address);
+}
 /* -----------------------------------------------
     Read/write the run-time registers
    ----------------------------------------------- */
