@@ -842,6 +842,7 @@ enum {
 PVOID pBuf;
 PVOID Desc[DESC_NUMBER];
 DWORD DescPhysicalAddr[DESC_NUMBER] = { 0 };
+WD_DMA* PhyDMA[DESC_NUMBER] = { 0 };
 /*functions  declare*/
 BOOL DMARoutine(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize,
     BOOL fPolling, BOOL fToDev, DWORD* DescNum);
@@ -888,8 +889,8 @@ static void MenuDMAtrans(WDC_DEVICE_HANDLE hDev)
         printf("%d. App0 Unable to generate\n", MENU_DMA_9);
         printf("%d. free data buffer\n", MENU_DMA_10);
         printf("%d. END_DMA_Trans\n", MENU_DMA_11);
-        printf("%d. Read Register\n",MENU_DMA_12);
-        printf("%d. Write Register\n",MENU_DMA_13);
+        printf("%d. Read Register\n", MENU_DMA_12);
+        printf("%d. Write Register\n", MENU_DMA_13);
         printf("%d. EXIT\n", MENU_DMA_TEXIT);
         if (DIAG_INPUT_FAIL == DIAG_GetMenuOption(&option, MENU_DMA_13));
         switch (option)
@@ -964,6 +965,10 @@ BOOL DMARoutine(WDC_DEVICE_HANDLE hDev, DWORD dwDMABufSize,
 
     /* Flush the CPU caches (see documentation of WDC_DMASyncCpu()) */
     WDC_DMASyncCpu(pDma);
+    DWORD SyncCount = 0;
+    for (SyncCount = 0; SyncCount < *DescNum; SyncCount++) {
+        WDC_DMASyncCpu(PhyDMA[SyncCount]);
+    }
     //printf("success to flush the CPU caches\n");
     /* Start DMA - write to the device to initiate the DMA transfer */
     //MyDMAStart(hDev, pDma, DescNum);
@@ -1015,7 +1020,7 @@ Remalloc:
     /*想法：申请一快内存，然后找到对应低5位为0的地方，开始建立描述符*/
     DWORD DescCount = 0, offset = 0;
     char* AddrDesc = NULL;
-    WD_DMA* PhyDMA = NULL;
+    //WD_DMA* PhyDMA = NULL;
     for (DescCount = 0; DescCount < DescNumber; DescCount++)
     {
     Remalloc_desc:
@@ -1030,19 +1035,19 @@ Remalloc:
             AddrDesc = AddrDesc + 32 - offset;
             Desc[DescCount] = AddrDesc;
         }
-        dwStatus = WDC_DMASGBufLock(hDev, Desc[DescCount], dwOptions, 32, &PhyDMA);
-        if ((PhyDMA->dwPages) != 1) {
-            WDC_DMABufUnlock(PhyDMA);
+        dwStatus = WDC_DMASGBufLock(hDev, Desc[DescCount], dwOptions, 32, &PhyDMA[DescCount]);
+        if ((PhyDMA[DescCount]->dwPages) != 1) {
+            WDC_DMABufUnlock(PhyDMA[DescCount]);
             free(Desc[DescCount]);
             Desc[DescCount] = NULL;
-            PhyDMA = NULL;
+            PhyDMA[DescCount] = NULL;
             goto Remalloc_desc;
         }
+
         //printf("第%d个 lock buffer user address is %x\t", DescCount+1,PhyDMA->pUserAddr);
         //printf("第%d个 lock buffer physical address is %x\n", DescCount + 1, PhyDMA->Page[0].pPhysicalAddr);
         //printf("the addrress of user Ptr is %p\n", DescCount + 1, Desc[DescCount]);
-        DescPhysicalAddr[DescCount] = (DWORD)(PhyDMA->Page[0].pPhysicalAddr);/*获得描述符的物理地址*/
-        PhyDMA = NULL;
+        DescPhysicalAddr[DescCount] = (DWORD)(PhyDMA[DescCount]->Page[0].pPhysicalAddr);/*获得描述符的物理地址*/
     }
     /*下一个描述符的地址给前一个描述符的末尾*/
     /*描述符的next指针*/
@@ -1271,7 +1276,7 @@ void DMA_Data_Buffer_Clear(void)
 {
     int buffercount = 0;
     unsigned int* Bufferread = pBuf;
-    for (buffercount = 0;buffercount < (dwDMABufSize) / 4;buffercount++)
+    for (buffercount = 0; buffercount < (dwDMABufSize) / 4; buffercount++)
     {
         *Bufferread = 0;
         Bufferread = Bufferread + 1;
@@ -1301,7 +1306,7 @@ void DMA_Free_Buffer_Desc(void)
     free(pBuf);
     pBuf = NULL;
     int ccount = 0;
-    for (ccount = 0;ccount < DESC_NUMBER;ccount++) {
+    for (ccount = 0; ccount < DESC_NUMBER; ccount++) {
         free(Desc[ccount]);
         Desc[ccount] = NULL;
         DescPhysicalAddr[ccount] = 0;
@@ -1309,23 +1314,23 @@ void DMA_Free_Buffer_Desc(void)
 }
 void DMA_Register_Read(WDC_DEVICE_HANDLE hDev)
 {
-    DWORD address=0;
-    DWORD register_value=0;
+    DWORD address = 0;
+    DWORD register_value = 0;
     printf("input the read address\t");
-    scanf("%x",&address);
+    scanf("%x", &address);
     WDC_ReadAddr32(hDev, 0, address, &register_value);
-    printf("The offset %x value is %x\n",address,register_value);
+    printf("The offset %x value is %x\n", address, register_value);
 }
 void DMA_Register_Write(WDC_DEVICE_HANDLE hDev)
 {
-    DWORD address=0;
-    DWORD register_value=0;
+    DWORD address = 0;
+    DWORD register_value = 0;
     printf("input the write address\t");
-    scanf("%x",&address);
+    scanf("%x", &address);
     printf("input the write value\t");
-    scanf("%x",&register_value);
-    WDC_WriteAddr32(hDev,0,address,register_value);
-    printf("Write %x to %x\n",register_value,address);
+    scanf("%x", &register_value);
+    WDC_WriteAddr32(hDev, 0, address, register_value);
+    printf("Write %x to %x\n", register_value, address);
 }
 /* -----------------------------------------------
     Read/write the run-time registers
