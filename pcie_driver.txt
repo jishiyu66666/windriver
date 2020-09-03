@@ -18,7 +18,6 @@
 #include "samples/shared/wdc_diag_lib.h"
 
 #include "samples/shared/wds_diag_lib.h"
-
 #include "my_driver_lib.h"
 
 /*************************************************************
